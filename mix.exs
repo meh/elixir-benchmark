@@ -4,6 +4,7 @@ defmodule Benchmark.Mixfile do
   def project do
     [ app: :benchmark,
       version: "0.0.1",
+      elixir: "~> 0.9.4",
       deps: deps ]
   end
 

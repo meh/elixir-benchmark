@@ -86,7 +86,7 @@ defmodule Benchmark do
       [ min: Benchmark.Time.at(elem(Enum.first(tests), 0)),
         max: Benchmark.Time.at(elem(List.last(tests), 0)),
 
-        median: Benchmark.Time.at(elem(Enum.at!(tests, round(length(tests) / 2)), 0)),
+        median: Benchmark.Time.at(elem(Enum.at(tests, round(length(tests) / 2)), 0)),
         average: Benchmark.Time.at(List.foldl(tests, 0, fn({ t, _ }, sum) ->
           t + sum
         end) / length(tests)) ]
