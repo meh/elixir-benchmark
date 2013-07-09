@@ -7,7 +7,7 @@ defmodule Benchmark do
     end
   end
 
-  defimpl Binary.Inspect, for: Time do
+  defimpl Inspect, for: Time do
     def inspect(Time[microseconds: mcs], _opts) do
       cond do
         mcs >= 1_000_000 ->
