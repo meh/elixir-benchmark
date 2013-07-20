@@ -78,7 +78,7 @@ defmodule Benchmark do
     quote do
       func  = function(do: (() -> unquote(block)))
       tests = Enum.sort(Enum.map(1 .. unquote(n), fn(_) ->
-        :timer.tc(func)
+        Benchmark.run(func)
       end), fn({ a, _ }, { b, _ }) ->
         b > a
       end)
@@ -90,6 +90,21 @@ defmodule Benchmark do
         average: Benchmark.Time.at(List.foldl(tests, 0, fn({ t, _ }, sum) ->
           t + sum
         end) / length(tests)) ]
+    end
+  end
+
+  @doc false
+  def run(func) do
+    self = Process.self
+    id   = :random.uniform(10000000)
+
+    Process.spawn_link fn ->
+      self <- { Benchmark, id, :timer.tc(func) }
+    end
+
+    receive do
+      { Benchmark, ^id, time } ->
+        time
     end
   end
 end
