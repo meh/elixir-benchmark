@@ -34,9 +34,9 @@ defmodule Benchmark do
     end
   end
 
-  defmacro measure(fun) when is_function(fun, 0) do
+  defmacro measure(term) do
     quote do
-      { time, result } = :timer.tc(fun)
+      { time, result } = :timer.tc(unquote(term))
 
       Benchmark.Result[time: Benchmark.Time.at(time), result: result]
     end
@@ -60,9 +60,9 @@ defmodule Benchmark do
     end
   end
 
-  defmacro time(fun) when is_function(fun, 0) do
+  defmacro time(term) do
     quote do
-      Benchmark.measure(unquote(fun)).time
+      Benchmark.measure(unquote(term)).time
     end
   end
 
