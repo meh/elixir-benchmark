@@ -76,6 +76,10 @@ defmodule Benchmark do
 
   defmacro times(n, do: block) do
     quote do
+      unless is_integer(unquote(n)) and unquote(n) > 1 do
+        raise ArgumentError, message: "the number of times must be greater than 1"
+      end
+
       func  = function(do: (() -> unquote(block)))
       tests = Enum.sort(Enum.map(1 .. unquote(n), fn(_) ->
         Benchmark.run(func)
