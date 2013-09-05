@@ -11,13 +11,13 @@ defmodule Benchmark do
     def inspect(Time[microseconds: mcs], _opts) do
       cond do
         mcs >= 1_000_000 ->
-          to_binary :io_lib.format("~p seconds", [mcs / 1_000_000])
+          to_string :io_lib.format("~p seconds", [mcs / 1_000_000])
 
         mcs >= 1_000 ->
-          to_binary :io_lib.format("~p milliseconds", [mcs / 1_000])
+          to_string :io_lib.format("~p milliseconds", [mcs / 1_000])
 
         true ->
-          to_binary :io_lib.format("~p microseconds", [mcs])
+          to_string :io_lib.format("~p microseconds", [mcs])
       end
     end
   end
@@ -28,7 +28,7 @@ defmodule Benchmark do
 
   defmacro measure(do: block) do
     quote do
-      { time, result } = :timer.tc(function(do: (() -> unquote(block))))
+      { time, result } = :timer.tc(fn -> unquote(block) end)
 
       Benchmark.Result[time: Benchmark.Time.at(time), result: result]
     end
@@ -80,7 +80,7 @@ defmodule Benchmark do
         raise ArgumentError, message: "the number of times must be greater than 1"
       end
 
-      func  = function(do: (() -> unquote(block)))
+      func  = fn -> unquote(block) end
       tests = Enum.sort(Enum.map(1 .. unquote(n), fn(_) ->
         Benchmark.run(func)
       end), fn({ a, _ }, { b, _ }) ->
