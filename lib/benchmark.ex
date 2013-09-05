@@ -97,6 +97,57 @@ defmodule Benchmark do
     end
   end
 
+  def run_for_executor(d, func, total // 0, tests // []) do
+    cond do
+      total >= d -> tests
+      true ->
+        result = Benchmark.run(func)
+        run_for_executor(d, func, total + elem(result, 0), [ result | tests ])
+    end
+  end
+
+  @doc """
+  Run a piece of code for a certain time and return statistics
+
+  `d` is the minimum duration to run for in microseconds. The code
+  block passed is executed as often as needed until the summed
+  execution time exceeds `d`.
+
+  Returns a list of key/value pairs with the following pieces of
+  information: minimum/maximum/average/median time for one block
+  invocation, number of invocations completed, total actual execution
+  time and requested minimum execution time `d`.
+
+  ## Example usage:
+
+    iex> Benchmark.run_for 5000, do: :math.sqrt(20000)
+    [min: 1 microseconds, max: 47 microseconds, median: 2 microseconds,
+     average: 3.390921409214092 microseconds, total: 5.005 milliseconds,
+     number: 1476, requested_duration: 5.0 milliseconds]
+
+  """
+  defmacro run_for(d, do: block) do
+    quote do
+      unless is_integer(unquote(d)) and unquote(d) > 0 do
+        raise ArgumentError, message: "the duration must be greater than 0"
+      end
+
+      tests = Benchmark.run_for_executor(unquote(d), fn -> unquote(block) end)
+           |> Enum.sort(fn { a, _ }, { b, _ } -> b > a end)
+
+      total = Enum.reduce(tests, 0, fn({ t, _ }, sum) -> t + sum end)
+
+      [ min: Benchmark.Time.at(elem(Enum.first(tests), 0)),
+        max: Benchmark.Time.at(elem(List.last(tests), 0)),
+
+        median: Benchmark.Time.at(elem(Enum.at(tests, round(length(tests) / 2)), 0)),
+        average: Benchmark.Time.at(total / length(tests)),
+        total: Benchmark.Time.at(total),
+        number: length(tests),
+        requested_duration: Benchmark.Time.at(unquote(d)) ]
+    end
+  end
+
   @doc false
   def run(func) do
     self = Process.self
