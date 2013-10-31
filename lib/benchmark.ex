@@ -80,33 +80,23 @@ defmodule Benchmark do
         raise ArgumentError, message: "the number of times must be greater than 1"
       end
 
-      func  = fn -> unquote(block) end
-      tests = Enum.sort(Enum.map(1 .. unquote(n), fn(_) ->
-        Benchmark.run(func)
-      end), fn({ a, _ }, { b, _ }) ->
-        b > a
-      end)
+      func         = fn -> unquote(block) end
+      { first, _ } = Benchmark.run(func)
+      result       = Enum.reduce 1 .. unquote(n), { first, first, 0 }, fn
+        _, { min, max, total } ->
+          { current, _ } = Benchmark.run(func)
 
-      total = List.foldl(tests, 0, fn({ t, _ }, sum) ->
-        t + sum
-      end)
+          { min(min, current), max(max, current), total + current }
+      end
 
-      [ min: Benchmark.Time.at(elem(Enum.first(tests), 0)),
-        max: Benchmark.Time.at(elem(List.last(tests), 0)),
+      { min, max, total } = result
 
-        median: Benchmark.Time.at(elem(Enum.at(tests, round(length(tests) / 2)), 0)),
-        average: Benchmark.Time.at(total / length(tests)),
-        total: Benchmark.Time.at(total),
-        requested_number: unquote(n) ]
-    end
-  end
+      [ min: Benchmark.Time.at(min),
+        max: Benchmark.Time.at(max),
 
-  def run_for_executor(d, func, total // 0, tests // []) do
-    cond do
-      total >= d -> tests
-      true ->
-        result = Benchmark.run(func)
-        run_for_executor(d, func, total + elem(result, 0), [ result | tests ])
+        average: Benchmark.Time.at(total / unquote(n)),
+        total:   Benchmark.Time.at(total),
+        length:  unquote(n) ]
     end
   end
 
@@ -136,8 +126,9 @@ defmodule Benchmark do
         raise ArgumentError, message: "the duration must be greater than 0"
       end
 
-      tests = Benchmark.run_for_executor(unquote(d), fn -> unquote(block) end)
-           |> Enum.sort(fn { a, _ }, { b, _ } -> b > a end)
+      func  = fn -> unquote(block) end
+      tests = Benchmark.run_for_executor(unquote(d), func)
+        |> Enum.sort(fn { a, _ }, { b, _ } -> b > a end)
 
       total = Enum.reduce(tests, 0, fn({ t, _ }, sum) -> t + sum end)
 
@@ -149,6 +140,18 @@ defmodule Benchmark do
         total: Benchmark.Time.at(total),
         number: length(tests),
         requested_duration: Benchmark.Time.at(unquote(d)) ]
+    end
+  end
+
+  defp run_for_executor(d, func, total // 0, tests // []) do
+    cond do
+      total >= d ->
+        tests
+
+      true ->
+        result = Benchmark.run(func)
+
+        run_for_executor(d, func, total + elem(result, 0), [result | tests])
     end
   end
 
