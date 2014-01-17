@@ -132,7 +132,7 @@ defmodule Benchmark do
 
       total = Enum.reduce(tests, 0, fn({ t, _ }, sum) -> t + sum end)
 
-      [ min: Benchmark.Time.at(elem(Enum.first(tests), 0)),
+      [ min: Benchmark.Time.at(elem(List.first(tests), 0)),
         max: Benchmark.Time.at(elem(List.last(tests), 0)),
 
         median: Benchmark.Time.at(elem(Enum.at(tests, round(length(tests) / 2)), 0)),
@@ -161,7 +161,7 @@ defmodule Benchmark do
     id   = :random.uniform(10000000)
 
     Process.spawn_link fn ->
-      self <- { Benchmark, id, :timer.tc(func) }
+      self |> send { Benchmark, id, :timer.tc(func) }
     end
 
     receive do
