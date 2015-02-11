@@ -1,14 +1,16 @@
 defmodule Benchmark do
-  defrecord Time, microseconds: 0 do
-    @type t :: Time[microseconds: number]
+  defmodule Time do
+    defstruct microseconds: 0
+    @type t :: %Time{microseconds: number}
 
-    def at(time) do
-      Time[microseconds: time]
+    @spec at(number) :: t
+    def at(microseconds) do
+      %Time{microseconds: microseconds}
     end
   end
 
   defimpl Inspect, for: Time do
-    def inspect(Time[microseconds: mcs], _opts) do
+    def inspect(%Time{microseconds: mcs}, _opts) do
       cond do
         mcs >= 1_000_000 ->
           to_string :io_lib.format("~p seconds", [mcs / 1_000_000])
@@ -22,36 +24,33 @@ defmodule Benchmark do
     end
   end
 
-  defrecord Result, time: 0, result: nil do
-    @type t :: Result[time: Time.t, result: any]
+  defmodule Result do
+    @type t :: %Result{time: Time.t, result: any}
+    defstruct time: 0, result: nil
   end
 
   defmacro measure(do: block) do
     quote do
       { time, result } = :timer.tc(fn -> unquote(block) end)
-
-      Benchmark.Result[time: Benchmark.Time.at(time), result: result]
+      %Benchmark.Result{time: Benchmark.Time.at(time), result: result}
     end
   end
 
   defmacro measure(term) do
     quote do
       { time, result } = :timer.tc(unquote(term))
-
-      Benchmark.Result[time: Benchmark.Time.at(time), result: result]
+      %Benchmark.Result{time: Benchmark.Time.at(time), result: result}
     end
   end
 
   def measure(fun, args) when is_function(fun, length args) do
     { time, result } = :timer.tc(fun, args)
-
-    Benchmark.Result[time: Benchmark.Time.at(time), result: result]
+    %Benchmark.Result{time: Benchmark.Time.at(time), result: result}
   end
 
   def measure(module, fun, args) when is_function(fun, length args) do
     { time, result } = :timer.tc(module, fun, args)
-
-    Benchmark.Result[time: Benchmark.Time.at(time), result: result]
+    %Benchmark.Result{time: Benchmark.Time.at(time), result: result}
   end
 
   defmacro time(do: block) do
@@ -143,30 +142,8 @@ defmodule Benchmark do
     end
   end
 
-  defp run_for_executor(d, func, total // 0, tests // []) do
-    cond do
-      total >= d ->
-        tests
-
-      true ->
-        result = Benchmark.run(func)
-
-        run_for_executor(d, func, total + elem(result, 0), [result | tests])
-    end
-  end
-
   @doc false
   def run(func) do
-    self = Process.self
-    id   = :random.uniform(10000000)
-
-    Process.spawn_link fn ->
-      self |> send { Benchmark, id, :timer.tc(func) }
-    end
-
-    receive do
-      { Benchmark, ^id, time } ->
-        time
-    end
+    Task.async(fn -> :timer.tc(func) end) |> Task.await
   end
 end
